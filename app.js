@@ -3,13 +3,28 @@
 
 // BUDGET CONTROLLER //
 var budgetController = (function () {
+  
   //////////////////////////////////////////////////////////
   /* Function constructor for making lot of objects later */
   ////////////////////////////////////////////////////////
+
   var Expense = function (id, description, value) {
     this.id = id;
     this.description = description;
     this.value = value;
+    this.percentage = -1;
+  };
+
+  Expense.prototype.calcPercentage = function (totalIncome) {
+    if (totalIncome > 0) {
+      this.percentage = Math.round((this.value / totalIncome) * 100);
+    } else {
+      this.percentage = -1;
+    }
+  };
+
+  Expense.prototype.getPercentage = function () {
+    return this.percentage;
   };
 
   var Income = function (id, description, value) {
@@ -41,6 +56,7 @@ var budgetController = (function () {
       exp: 0,
       inc: 0,
     },
+
     budget: 0,
     percentage: -1,
   };
@@ -57,7 +73,7 @@ var budgetController = (function () {
       // 1. Create new id ->
 
       if (data.allItems[type].length > 0) {
-        // returns something like allItems[exp][index] or allItems.exp[index]
+        // returns allItems[exp][index] or allItems.exp[index]
         ID = data.allItems[type][data.allItems[type].length - 1].id + 1;
       } else {
         ID = 0;
@@ -82,7 +98,7 @@ var budgetController = (function () {
     deleteItem: function (type, id) {
       var ids, index;
       // id = 6
-      // data.allItems[type][id];
+      // data.allItems[type][id];k
       // ids = [1 2 4 6 8],
       // index = 3
 
@@ -116,6 +132,29 @@ var budgetController = (function () {
       // Expense = 100 and income of 200, spent 50% = 100/200 = 0.5 * 100
     },
 
+    calculatePercentages: function () {
+      /*
+    a = 20
+    b = 10
+
+    c = 40
+    income = 100
+    a = 20/100 = 20%
+    b = 10/100 = 10%
+    c = 40/100 = 40%
+    */
+      data.allItems.exp.forEach(function (cur) {
+        cur.calcPercentage(data.totals.inc);
+      });
+    },
+
+    getPercentages: function () {
+      var allPerc = data.allItems.exp.map(function (cur) {
+        return cur.getPercentage();
+      });
+      return allPerc;
+    },
+
     getBudget: function () {
       return {
         budget: data.budget,
@@ -145,6 +184,7 @@ var UIController = (function () {
     expensesLabel: '.budget__expenses--value',
     percentageLabel: '.budget__expenses--percentage',
     container: '.container',
+    expensesPercLabel: '.item__percentage',
   };
 
   // Get input
@@ -209,7 +249,9 @@ var UIController = (function () {
     },
 
     displayBudget: function (obj) {
-      // Budget comes from obj
+      // Budget comes from objl.deleteItem(type, ID);
+
+      // 2. De
       // GetBudget message generate obj
       document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
       document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
@@ -222,6 +264,27 @@ var UIController = (function () {
       } else {
         document.querySelector(DOMstrings.percentageLabel).textContent = '---';
       }
+    },
+
+    displayPercentages: function(percentages) {
+      var fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
+
+      // Function for nodelist
+      var nodeListForEach = function(list, callback) {
+        for (var i = 0; i < list.length; i++)
+        {
+          callback(list[i], i);
+        }
+      };
+
+      // nodeListForEach
+      nodeListForEach(fields, function(current, index) {
+        if (percentages[index] > 0) {
+          current.textContent = percentages[index] + '%';
+        } else {
+          current.textContent = '---';
+        }
+      })
     },
 
     getDOMstrings: function () {
@@ -264,8 +327,13 @@ var controller = (function (budgetCtrl, UICtrl) {
 
   var updatePercentages = function () {
     // 1. Calculate percentage
+    budgetCtrl.calculatePercentages();
+
     // 2. Read percentages from the budget controller
+    var percentages = budgetCtrl.getPercentages();
+
     // 3. Update the user interface with new percentages
+    UICtrl.displayPercentages(percentages);
   };
 
   var ctrlAddItem = function () {
